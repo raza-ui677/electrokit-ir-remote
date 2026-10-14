@@ -43,13 +43,16 @@ const enum ElectrokitButton {
 namespace electrokitIR {
     let started = false
     let lastCode = -1
-    let handlers: ButtonHandler[] = []
-    let releaseHandlers: ButtonHandler[] = []
     let activeCode = -1
     let lastSeen = 0
     let releaseDelay = 300
-    let watcherStarted = false
-
+    let handlers: ButtonHandler[] = []
+    let releaseHandlers: ButtonHandler[] = []
+    let bitsReceived = 0
+    let addressBits = 0
+    let commandBits = 0
+    let pulseMark = 0
+    let rawFrame = "0x00000000"
     class ButtonHandler {
         button: ElectrokitButton
         callback: () => void
@@ -58,44 +61,92 @@ namespace electrokitIR {
             this.callback = callback
         }
     }
-
-    /** Connect the IR receiver. Use the same signal pin as before. */
+    function releaseActive(): void {
+        if (activeCode < 0) return
+        const old = activeCode
+        activeCode = -1
+        for (let i = 0; i < releaseHandlers.length; i++) {
+            const h = releaseHandlers[i]
+            if (h.button === ElectrokitButton.Any || h.button === old) {
+                control.inBackground(h.callback)
+            }
+        }
+    }
+    function onCompleteFrame(): void {
+        const command = (commandBits >> 8) & 0xff
+        const inverse = commandBits & 0xff
+        if ((command ^ inverse) !== 0xff) return
+        rawFrame = "0x" + toHex16(addressBits) + toHex16(commandBits)
+        lastCode = command
+        lastSeen = input.runningTime()
+        if (activeCode !== command) {
+            releaseActive()
+            activeCode = command
+            for (let i = 0; i < handlers.length; i++) {
+                const h = handlers[i]
+                if (h.button === ElectrokitButton.Any || h.button === command) {
+                    control.inBackground(h.callback)
+                }
+            }
+        }
+    }
+    function toHex16(n: number): string {
+        let result = ""
+        for (let i = 0; i < 4; i++) {
+            const digit = n & 15
+            result = "0123456789ABCDEF".charAt(digit) + result
+            n = n >> 4
+        }
+        return result
+    }
+    function decodePulse(duration: number): void {
+        if (duration < 1600) {
+            appendBit(0)
+        } else if (duration < 2700) {
+            appendBit(1)
+        } else {
+            bitsReceived = 0
+            if (duration >= 9500 && duration < 12500) {
+                // NEC repeat leader: 9 ms mark + 2.25 ms space.
+                if (activeCode >= 0) lastSeen = input.runningTime()
+            }
+            // 13.5 ms is the start of a full NEC frame.
+        }
+    }
+    function appendBit(bit: number): void {
+        bitsReceived++
+        if (bitsReceived <= 16) {
+            addressBits = ((addressBits << 1) | bit) & 0xffff
+        } else if (bitsReceived <= 32) {
+            commandBits = ((commandBits << 1) | bit) & 0xffff
+        }
+        if (bitsReceived === 32) {
+            bitsReceived = 0
+            onCompleteFrame()
+        }
+    }
+    /** Connect the NEC IR receiver. Do not connect another IR decoder to the same pin. */
     //% blockId=electrokit_ir_connect block="connect Electrokit IR receiver to pin %pin"
     //% pin.defl=DigitalPin.P0
     //% weight=100
     export function connect(pin: DigitalPin): void {
         if (started) return
         started = true
-        makerbit.connectIrReceiver(pin, IrProtocol.NEC)
-        if (!watcherStarted) {
-            watcherStarted = true
-            basic.forever(function () {
-                if (activeCode >= 0 && control.millis() - lastSeen > releaseDelay) {
-                    const released = activeCode
-                    activeCode = -1
-                    for (let i = 0; i < releaseHandlers.length; i++) {
-                        const h = releaseHandlers[i]
-                        if (h.button === ElectrokitButton.Any || h.button === released) h.callback()
-                    }
-                }
-                basic.pause(30)
-            })
-        }
-        makerbit.onIrDatagram(function () {
-            const code = makerbit.irButton()
-            if (code < 0) return
-            lastCode = code
-            activeCode = code
-            lastSeen = control.millis()
-            for (let i = 0; i < handlers.length; i++) {
-                const h = handlers[i]
-                if (h.button === ElectrokitButton.Any || h.button === code) {
-                    h.callback()
-                }
+        pins.setPull(pin, PinPullMode.PullNone)
+        pins.onPulsed(pin, PulseValue.Low, function () {
+            pulseMark = pins.pulseDuration()
+        })
+        pins.onPulsed(pin, PulseValue.High, function () {
+            const space = pins.pulseDuration()
+            decodePulse(pulseMark + space)
+        })
+        basic.forever(function () {
+            if (activeCode >= 0 && input.runningTime() - lastSeen > releaseDelay) {
+                releaseActive()
             }
+            basic.pause(25)
         })
     }
-
     /** Run when a remote button is pressed. */
     //% blockId=electrokit_ir_on_button block="on Electrokit button %button pressed"
     //% button.fieldEditor="gridpicker"
@@ -116,7 +167,7 @@ namespace electrokitIR {
     //% blockId=electrokit_ir_is_held block="Electrokit button %button is held"
     //% weight=80
     export function isHeld(button: ElectrokitButton): boolean {
-        if (activeCode < 0 || control.millis() - lastSeen > releaseDelay) return false
+        if (activeCode < 0 || input.runningTime() - lastSeen > releaseDelay) return false
         return button === ElectrokitButton.Any || activeCode === button
     }
 
@@ -146,7 +197,7 @@ namespace electrokitIR {
     //% blockId=electrokit_ir_raw_code block="last Electrokit IR hex code"
     //% weight=60
     export function rawCode(): string {
-        return makerbit.irDatagram()
+        return rawFrame
     }
 
     /** Returns the NEC command for a selected physical button. */
