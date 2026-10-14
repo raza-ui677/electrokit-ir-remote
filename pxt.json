@@ -1,12 +1,15 @@
 {
   "name": "electrokit-ir-remote",
-  "version": "0.1.0",
-  "description": "17-button Electrokit NEC IR remote for BBC micro:bit V2; correct button mapping using MakerBit decoder",
+  "version": "0.2.0",
+  "description": "17-key Electrokit IR remote with button events, last command, held state and estimated release",
   "license": "MIT",
   "dependencies": {
     "core": "*",
     "MakerBit-IR-Receiver": "github:1010Technologies/pxt-makerbit-ir-receiver#v1.5.14"
   },
-  "files": ["main.ts", "README.md"],
+  "files": [
+    "main.ts",
+    "README.md"
+  ],
   "public": true
 }
