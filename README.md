@@ -2,7 +2,7 @@
 
 MakeCode extension for a 17-button NEC infrared remote control, compatible with BBC micro:bit V2.
 
-![Electrokit IR Remote](remote.jpg)
+<img src="remote.jpg" alt="Electrokit IR Remote" width="250">
 
 This extension provides correct button mapping for the 17-button IR remote with numeric buttons at the top and directional buttons at the bottom.
 
