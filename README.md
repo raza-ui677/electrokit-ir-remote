@@ -1,3 +1,19 @@
+# Electrokit IR Remote for micro:bit
+
+MakeCode extension for a 17-button NEC infrared remote control, compatible with BBC micro:bit V2.
+
+![Electrokit IR Remote](remote.jpg)
+
+This extension provides correct button mapping for the 17-button IR remote with numeric buttons at the top and directional buttons at the bottom.
+
+**Features**
+- All 17 buttons supported
+- Button press detection
+- Last received button
+- Button hold detection
+- Button release detection
+- Compatible with Microsoft MakeCode for micro:bit
+ 
 # Electrokit IR Remote v0.2
 
 For BBC micro:bit V2 and the 17-key Electrokit NEC remote with number keys at top. Depends on MakerBit IR Receiver.
