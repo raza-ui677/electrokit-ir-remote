@@ -1,35 +1,27 @@
-# Electrokit IR Remote for micro:bit
+# Electrokit IR Remote v0.2
 
-MakeCode extension for the **17-key Electrokit infrared remote** with the numeric keypad at the top and arrow pad at the bottom. Tested IR command mapping supplied by the remote owner; extension itself still needs testing on physical hardware.
+For BBC micro:bit V2 and the 17-key Electrokit NEC remote with number keys at top. Depends on MakerBit IR Receiver.
 
-Uses the NEC decoder from [MakerBit IR Receiver](https://github.com/1010Technologies/pxt-makerbit-ir-receiver), licensed under MIT. This extension adds its own correct button mapping and MakeCode blocks.
+## New in v0.2
+- `lastButton()` returns the NEC command byte (number), e.g. OK = 0x38 = 56.
+- `isHeld(button)` returns true while IR datagrams continue arriving within the timeout.
+- `onButtonReleased(button, callback)` fires after no datagram has been seen for the timeout.
+- `setReleaseTimeout(ms)` sets timeout from 100 to 1000 ms (default 300).
 
-## Setup
+**Important:** NEC IR has no dedicated button-release frame. Held/released are inferred from received datagrams. Some remotes and MakerBit decoding do not forward repeat frames; in that case a long press may be interpreted as release after 300 ms. Test this before controlling motors.
 
-Connect the receiver's signal output to micro:bit P0 (or your selected pin), VCC and GND as required by the receiver board. In MakeCode, use **connect Electrokit IR receiver to pin P0** inside `on start`, then add **on Electrokit button [OK] pressed** events. Do not separately connect the MakerBit receiver or install another IR decoder in the same project.
+## Installation
+Upload these files to the root of your existing GitHub repository (replace main.ts, pxt.json and README.md). In MakeCode refresh/update the extension or open a new project and add the repository URL.
 
-## NEC command map
+## Example
+```typescript
+electrokitIR.connect(DigitalPin.P0)
+electrokitIR.onButtonPressed(ElectrokitButton.OK, function () {
+    basic.showIcon(IconNames.Heart)
+})
+electrokitIR.onButtonReleased(ElectrokitButton.OK, function () {
+    basic.clearScreen()
+})
+```
 
-| Key | Command |
-|---|---|
-| 1 | A2 |
-| 2 | 62 |
-| 3 | E2 |
-| 4 | 22 |
-| 5 | 02 |
-| 6 | C2 |
-| 7 | E0 |
-| 8 | A8 |
-| 9 | 90 |
-| * | 68 |
-| 0 | 98 |
-| # | B0 |
-| Up | 18 |
-| Left | 10 |
-| OK | 38 |
-| Right | 5A |
-| Down | 4A |
-
-## Limitations
-
-This first version triggers on full IR datagrams. It does not yet implement key-repeat or release events. The underlying MakerBit extension is a dependency. Hardware verification and MakeCode compilation are still pending.
+This is a community prototype, not officially associated with Electrokit.
