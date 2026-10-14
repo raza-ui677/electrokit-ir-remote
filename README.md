@@ -1,26 +1,17 @@
-# Electrokit IR Remote v0.3.0
+# Electrokit IR Remote — diagnostic build 0.3.1
 
-MakeCode extension for the 17-button Electrokit NEC IR remote (numbers at top, arrow keys at bottom).
+This is a temporary debug build for micro:bit V2, based on v0.3. It counts pulse callbacks, complete NEC frames and recognized repeat frames. **Do not publish this as a stable release.**
 
-## Changes in 0.3
-- Built-in NEC decoder; no MakerBit dependency.
-- NEC repeat frames refresh the held-button timer.
-- `onButtonPressed` runs once per press; `isHeld` remains true while repeats arrive.
-- `onButtonReleased` estimates release after a configurable timeout (default 300 ms).
-- Correct mapping for all 17 keys.
+MakeCode JavaScript test:
 
-## Usage
 ```typescript
 electrokitIR.connect(DigitalPin.P0)
-electrokitIR.onButtonPressed(ElectrokitButton.OK, function () { basic.showIcon(IconNames.Heart) })
 basic.forever(function () {
-    if (electrokitIR.isHeld(ElectrokitButton.Up)) led.plot(2, 0)
-    else led.unplot(2, 0)
-    basic.pause(30)
+    serial.writeLine("t=" + input.runningTime() + " " + electrokitIR.debugSnapshot())
+    basic.pause(500)
 })
 ```
 
-**Important:** Do not initialize MakerBit's IR decoder on the same pin in the same program. This release is a candidate and has not been compiled/tested on a physical micro:bit. IR release is estimated, not transmitted by the remote.
+Press and hold UP for 3 seconds. Copy the serial lines before, during and after. `repeat` should increase while held if repeat decoding works. `L` and `H` should increase if pulse callbacks arrive. `longPair` helps detect a mismatched NEC timing threshold.
 
-## License
-MIT. Decoder design adapted from the MIT-licensed MakerBit IR Receiver by 1010Technologies.
+The diagnostic counters are cumulative and the existing 17-button mappings are unchanged.

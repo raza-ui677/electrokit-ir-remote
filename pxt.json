@@ -1,7 +1,7 @@
 {
   "name": "electrokit-ir-remote",
-  "version": "0.3.0",
-  "description": "17-button NEC IR remote for micro:bit V2 with NEC repeat frame handling",
+  "version": "0.3.1",
+  "description": "Diagnostic build: IR pulse/frame counters for NEC repeat troubleshooting",
   "license": "MIT",
   "dependencies": {
     "core": "*"

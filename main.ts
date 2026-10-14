@@ -53,6 +53,18 @@ namespace electrokitIR {
     let commandBits = 0
     let pulseMark = 0
     let rawFrame = "0x00000000"
+    // Diagnostic counters. Read via debugSnapshot(); never print inside pulse interrupts.
+    let dbgLow = 0
+    let dbgHigh = 0
+    let dbgFull = 0
+    let dbgRepeat = 0
+    let dbgInvalid = 0
+    let dbgLong = 0
+    let dbgLastLow = 0
+    let dbgLastHigh = 0
+    let dbgLastPair = 0
+    let dbgLastLong = 0
+    let dbgMaxPair = 0
     class ButtonHandler {
         button: ElectrokitButton
         callback: () => void
@@ -75,7 +87,11 @@ namespace electrokitIR {
     function onCompleteFrame(): void {
         const command = (commandBits >> 8) & 0xff
         const inverse = commandBits & 0xff
-        if ((command ^ inverse) !== 0xff) return
+        if ((command ^ inverse) !== 0xff) {
+            dbgInvalid++
+            return
+        }
+        dbgFull++
         rawFrame = "0x" + toHex16(addressBits) + toHex16(commandBits)
         lastCode = command
         lastSeen = input.runningTime()
@@ -106,7 +122,10 @@ namespace electrokitIR {
             appendBit(1)
         } else {
             bitsReceived = 0
+            dbgLong++
+            dbgLastLong = duration
             if (duration >= 9500 && duration < 12500) {
+                dbgRepeat++
                 // NEC repeat leader: 9 ms mark + 2.25 ms space.
                 if (activeCode >= 0) lastSeen = input.runningTime()
             }
@@ -125,6 +144,18 @@ namespace electrokitIR {
             onCompleteFrame()
         }
     }
+    /** Snapshot of pulse and frame counters for debugging. Values are cumulative. */
+    //% blockId=electrokit_ir_debug_snapshot block="IR debug snapshot"
+    //% weight=10
+    export function debugSnapshot(): string {
+        return "L=" + dbgLow + " H=" + dbgHigh +
+            " full=" + dbgFull + " repeat=" + dbgRepeat +
+            " invalid=" + dbgInvalid + " long=" + dbgLong +
+            " lastL=" + dbgLastLow + " lastH=" + dbgLastHigh +
+            " pair=" + dbgLastPair + " longPair=" + dbgLastLong +
+            " maxPair=" + dbgMaxPair
+    }
+
     /** Connect the NEC IR receiver. Do not connect another IR decoder to the same pin. */
     //% blockId=electrokit_ir_connect block="connect Electrokit IR receiver to pin %pin"
     //% pin.defl=DigitalPin.P0
@@ -135,10 +166,16 @@ namespace electrokitIR {
         pins.setPull(pin, PinPullMode.PullNone)
         pins.onPulsed(pin, PulseValue.Low, function () {
             pulseMark = pins.pulseDuration()
+            dbgLow++
+            dbgLastLow = pulseMark
         })
         pins.onPulsed(pin, PulseValue.High, function () {
             const space = pins.pulseDuration()
-            decodePulse(pulseMark + space)
+            dbgHigh++
+            dbgLastHigh = space
+            dbgLastPair = pulseMark + space
+            if (dbgLastPair > dbgMaxPair) dbgMaxPair = dbgLastPair
+            decodePulse(dbgLastPair)
         })
         basic.forever(function () {
             if (activeCode >= 0 && input.runningTime() - lastSeen > releaseDelay) {
