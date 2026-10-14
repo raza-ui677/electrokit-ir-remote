@@ -44,6 +44,11 @@ namespace electrokitIR {
     let started = false
     let lastCode = -1
     let handlers: ButtonHandler[] = []
+    let releaseHandlers: ButtonHandler[] = []
+    let activeCode = -1
+    let lastSeen = 0
+    let releaseDelay = 300
+    let watcherStarted = false
 
     class ButtonHandler {
         button: ElectrokitButton
@@ -62,9 +67,26 @@ namespace electrokitIR {
         if (started) return
         started = true
         makerbit.connectIrReceiver(pin, IrProtocol.NEC)
+        if (!watcherStarted) {
+            watcherStarted = true
+            basic.forever(function () {
+                if (activeCode >= 0 && control.millis() - lastSeen > releaseDelay) {
+                    const released = activeCode
+                    activeCode = -1
+                    for (let i = 0; i < releaseHandlers.length; i++) {
+                        const h = releaseHandlers[i]
+                        if (h.button === ElectrokitButton.Any || h.button === released) h.callback()
+                    }
+                }
+                basic.pause(30)
+            })
+        }
         makerbit.onIrDatagram(function () {
             const code = makerbit.irButton()
+            if (code < 0) return
             lastCode = code
+            activeCode = code
+            lastSeen = control.millis()
             for (let i = 0; i < handlers.length; i++) {
                 const h = handlers[i]
                 if (h.button === ElectrokitButton.Any || h.button === code) {
@@ -81,6 +103,36 @@ namespace electrokitIR {
     //% weight=90
     export function onButtonPressed(button: ElectrokitButton, callback: () => void): void {
         handlers.push(new ButtonHandler(button, callback))
+    }
+
+    /** Most recently received button command (-1 before first reception). */
+    //% blockId=electrokit_ir_last_button block="last Electrokit button code"
+    //% weight=85
+    export function lastButton(): number {
+        return lastCode
+    }
+
+    /** True while a button is considered held (based on recent IR frames). */
+    //% blockId=electrokit_ir_is_held block="Electrokit button %button is held"
+    //% weight=80
+    export function isHeld(button: ElectrokitButton): boolean {
+        if (activeCode < 0 || control.millis() - lastSeen > releaseDelay) return false
+        return button === ElectrokitButton.Any || activeCode === button
+    }
+
+    /** Fires when no IR frame has arrived for the release timeout. This is an estimated release, not a physical release signal. */
+    //% blockId=electrokit_ir_on_released block="on Electrokit button %button released (estimated)"
+    //% weight=75
+    export function onButtonReleased(button: ElectrokitButton, callback: () => void): void {
+        releaseHandlers.push(new ButtonHandler(button, callback))
+    }
+
+    /** Release timeout in milliseconds (100..1000). */
+    //% blockId=electrokit_ir_timeout block="set IR release timeout to %ms ms"
+    //% ms.min=100 ms.max=1000 ms.defl=300
+    //% weight=65
+    export function setReleaseTimeout(ms: number): void {
+        releaseDelay = Math.max(100, Math.min(1000, ms))
     }
 
     /** Returns the most recent NEC command, or -1 before receiving one. */
