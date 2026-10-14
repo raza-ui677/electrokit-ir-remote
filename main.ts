@@ -45,6 +45,9 @@ namespace electrokitIR {
     let lastCode = -1
     let activeCode = -1
     let lastSeen = 0
+    let lastRepeatAt = 0
+    let lastFullAt = 0
+    let dbgRestored = 0
     let releaseDelay = 300
     let handlers: ButtonHandler[] = []
     let releaseHandlers: ButtonHandler[] = []
@@ -95,6 +98,7 @@ namespace electrokitIR {
         rawFrame = "0x" + toHex16(addressBits) + toHex16(commandBits)
         lastCode = command
         lastSeen = input.runningTime()
+        lastFullAt = lastSeen
         if (activeCode !== command) {
             releaseActive()
             activeCode = command
@@ -127,7 +131,18 @@ namespace electrokitIR {
             if (duration >= 9500 && duration < 12500) {
                 dbgRepeat++
                 // NEC repeat leader: 9 ms mark + 2.25 ms space.
-                if (activeCode >= 0) lastSeen = input.runningTime()
+                const now = input.runningTime()
+                // A repeat is only valid close to the preceding full/repeat frame.
+                // Some runtimes can mark a button released while repeats are
+                // still arriving; recover the state from the last full command.
+                if (lastCode >= 0 && now - lastSeen < 450) {
+                    lastSeen = now
+                    lastRepeatAt = now
+                    if (activeCode < 0) {
+                        activeCode = lastCode
+                        dbgRestored++
+                    }
+                }
             }
             // 13.5 ms is the start of a full NEC frame.
         }
@@ -153,7 +168,12 @@ namespace electrokitIR {
             " invalid=" + dbgInvalid + " long=" + dbgLong +
             " lastL=" + dbgLastLow + " lastH=" + dbgLastHigh +
             " pair=" + dbgLastPair + " longPair=" + dbgLastLong +
-            " maxPair=" + dbgMaxPair
+            " maxPair=" + dbgMaxPair +
+            " active=" + activeCode + " last=" + lastCode +
+            " age=" + (input.runningTime() - lastSeen) +
+            " fullAge=" + (input.runningTime() - lastFullAt) +
+            " repeatAge=" + (input.runningTime() - lastRepeatAt) +
+            " restored=" + dbgRestored
     }
 
     /** Connect the NEC IR receiver. Do not connect another IR decoder to the same pin. */
@@ -204,8 +224,12 @@ namespace electrokitIR {
     //% blockId=electrokit_ir_is_held block="Electrokit button %button is held"
     //% weight=80
     export function isHeld(button: ElectrokitButton): boolean {
-        if (activeCode < 0 || input.runningTime() - lastSeen > releaseDelay) return false
-        return button === ElectrokitButton.Any || activeCode === button
+        const now = input.runningTime()
+        if (now - lastSeen > releaseDelay) return false
+        // Repeat frames can arrive after a premature release transition.
+        const code = activeCode >= 0 ? activeCode : lastCode
+        if (code < 0) return false
+        return button === ElectrokitButton.Any || code === button
     }
 
     /** Fires when no IR frame has arrived for the release timeout. This is an estimated release, not a physical release signal. */

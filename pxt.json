@@ -1,7 +1,7 @@
 {
   "name": "electrokit-ir-remote",
-  "version": "0.3.1",
-  "description": "Diagnostic build: IR pulse/frame counters for NEC repeat troubleshooting",
+  "version": "0.3.2",
+  "description": "NEC repeat/held-state repair with timing diagnostics",
   "license": "MIT",
   "dependencies": {
     "core": "*"

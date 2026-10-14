@@ -1,17 +1,26 @@
-# Electrokit IR Remote — diagnostic build 0.3.1
+# Electrokit IR Remote v0.3.2 (test build)
 
-This is a temporary debug build for micro:bit V2, based on v0.3. It counts pulse callbacks, complete NEC frames and recognized repeat frames. **Do not publish this as a stable release.**
+17-button NEC remote for micro:bit V2.
 
-MakeCode JavaScript test:
+This update improves held-state recovery and adds `active`, `last`, `age`, `fullAge`, `repeatAge`, and `restored` to `debugSnapshot()`.
+
+## Test
 
 ```typescript
 electrokitIR.connect(DigitalPin.P0)
+electrokitIR.setReleaseTimeout(350)
 basic.forever(function () {
-    serial.writeLine("t=" + input.runningTime() + " " + electrokitIR.debugSnapshot())
-    basic.pause(500)
+    led.toggle(0, 0) // heartbeat: program is running
+    if (electrokitIR.isHeld(ElectrokitButton.Up)) {
+        led.plot(2, 0)
+    } else {
+        led.unplot(2, 0)
+    }
+    serial.writeLine(electrokitIR.debugSnapshot())
+    basic.pause(200)
 })
 ```
 
-Press and hold UP for 3 seconds. Copy the serial lines before, during and after. `repeat` should increase while held if repeat decoding works. `L` and `H` should increase if pulse callbacks arrive. `longPair` helps detect a mismatched NEC timing threshold.
+Hold Up for 3 seconds. `repeat` should rise, `age` should stay under ~350 ms, and `active=24` should persist. If not, share 8-12 console lines.
 
-The diagnostic counters are cumulative and the existing 17-button mappings are unchanged.
+Note: NEC has no physical release message. A release is inferred from missing repeats. This version is not hardware-validated; do not use for safety-critical motor stop.
