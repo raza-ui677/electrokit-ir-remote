@@ -1,14 +1,15 @@
 {
   "name": "electrokit-ir-remote",
-  "version": "0.3.2",
-  "description": "NEC repeat/held-state repair with timing diagnostics",
+  "version": "1.0.0",
+  "description": "17-button NEC infrared remote for micro:bit V2, with press, hold and estimated release events.",
   "license": "MIT",
   "dependencies": {
     "core": "*"
   },
   "files": [
     "main.ts",
-    "README.md"
+    "README.md",
+    "remote.jpg"
   ],
   "public": true
 }

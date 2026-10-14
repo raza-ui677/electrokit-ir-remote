@@ -159,23 +159,6 @@ namespace electrokitIR {
             onCompleteFrame()
         }
     }
-    /** Snapshot of pulse and frame counters for debugging. Values are cumulative. */
-    //% blockId=electrokit_ir_debug_snapshot block="IR debug snapshot"
-    //% weight=10
-    export function debugSnapshot(): string {
-        return "L=" + dbgLow + " H=" + dbgHigh +
-            " full=" + dbgFull + " repeat=" + dbgRepeat +
-            " invalid=" + dbgInvalid + " long=" + dbgLong +
-            " lastL=" + dbgLastLow + " lastH=" + dbgLastHigh +
-            " pair=" + dbgLastPair + " longPair=" + dbgLastLong +
-            " maxPair=" + dbgMaxPair +
-            " active=" + activeCode + " last=" + lastCode +
-            " age=" + (input.runningTime() - lastSeen) +
-            " fullAge=" + (input.runningTime() - lastFullAt) +
-            " repeatAge=" + (input.runningTime() - lastRepeatAt) +
-            " restored=" + dbgRestored
-    }
-
     /** Connect the NEC IR receiver. Do not connect another IR decoder to the same pin. */
     //% blockId=electrokit_ir_connect block="connect Electrokit IR receiver to pin %pin"
     //% pin.defl=DigitalPin.P0
